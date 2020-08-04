@@ -1,0 +1,126 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+require(tidyverse)
+col <- c(rep(4,115),rep(2, 1))
+dat = read.table("HW3-data.txt",header=TRUE) 
+colnames(dat) = c("MAT","Price")
+data = dat %>% arrange(MAT)
+EMP = -diff(log(data$Price))/diff(data$MAT) 
+MAT = data$MAT[-1]
+df_targetdata = data.frame(EMP=EMP,MAT=MAT)
+df_targetdata
+```
+
+
+```{r}
+require(tidyverse)
+ggplot(df_targetdata, aes(x=MAT, y=EMP)) +geom_point(col='red')
+```
+
+```{r}
+fit1 = lm(df_targetdata$EMP ~ df_targetdata$MAT)
+fit1
+plot(MAT, EMP)
+abline(fit1, col=2)
+plot(fit1)
+```
+
+```{r}
+plot(fit2)
+```
+
+```{r}
+plot(hatvalues(fit1), ylab="leverage",main="Leverage plot", ylim=c(0,.05))
+sigma = summary(fit2)$sigma
+min_intrstudent = min(intrstudent)
+max_intrstudent = max(intrstudent)
+intrstudent = resid(fit2)/sigma/sqrt(1-hatvalues(fit2))
+plot(intrstudent, ylim = c(min(-5, min_intrstudent), max(5, max_intrstudent)),
+       ylab="internally studentized residual",col=4, pch=18)
+abline(h=c(-3, 3),lwd=0.5,col=2)
+```
+
+```{r}
+plot(hatvalues(fit2), ylab="leverage",main="Leverage plot", ylim=c(0,.05))
+```
+
+
+```{r}
+plot(fit1$fitted.values,abs(rstudent(fit1)),xlab = "fitted values", ylab = "abs(rstudent)")
+fit_loess  = loess(abs(rstudent(fit2))~ fit2$fitted.values,span=1,deg=1)
+ord = order(fit2$fitted.values)
+lines(fit2$fitted.values[ord],fit_loess$fit[ord], col="red")
+```
+
+```{r}
+ord = order(fit2$fitted.values)
+plot.new()
+lines(fit2$fitted.values[ord],fit_loess$fit[ord], col="red")
+qqnorm(rstudent(fit2),datax=T,xlab="theoretical quantiles",ylab="sample quantiles of rstudent")
+qqline(rstudent(fit2),datax=T, col="red")
+```
+
+```{r}
+pairs(EMP~MAT + I(MAT**2) + I(MAT**3))
+```
+
+
+```{r}
+sigma = summary(fit2)$sigma
+minresid = min(resid(fit2))
+maxresid = max(resid(fit2))
+plot(resid(fit2), ylim = c(min(-5*sigma, minresid), max(5*sigma, maxresid)),
+       ylab="raw residual" ,col=4, pch=18)
+abline(h=c(-3*sigma, 3*sigma),lwd=1,col=2)
+```
+
+
+```{r}
+sigma = summary(fit1)$sigma
+min_rstudent = min(rstudent(fit1))
+max_rstudent = max(rstudent(fit1))
+plot(rstudent(fit1), ylim = c(min(-5, min_rstudent), max(5, max_rstudent)),
+       ylab="rstudent",col=4, pch=18)
+abline(h=c(-3, 3),lwd=1,col=2)
+```
+
+
+
+```{r}
+plot(MAT, EMP,pch=18,col=4,main="(a)");abline( fit1,lwd=2)
+```
+
+
+```{r}
+plot(sqrt(cooks.distance(fit1)), ylim = c(0,11), ylab=("square root Cook's D"),col=col, pch=18)
+library(faraway) 
+halfnorm(sqrt(cooks.distance(fit2)))
+halfnorm(sqrt(cooks.distance(fit1)), xlim=c(0,1.85), ylab=("square root Cook's D"))
+```
+
+
+```{r}
+fit2 = lm(EMP~MAT + I(MAT**2) + I(MAT**3))
+fit2
+```
+
+```{r}
+plot(MAT, EMP)
+lines(MAT, fit2$fitted.values, col=2)
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+

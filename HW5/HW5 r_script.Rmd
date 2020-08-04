@@ -1,0 +1,115 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+#store the function that calculates the Black-Scholes's formula
+bs <- function(S, T, t, K, r, s, q) {
+  dp <- (log(S/K) + (r - q + 0.5 * s^2) * (T - t)) / (s * sqrt(T - t))
+  dm <- dp - s * sqrt(T - t)
+S * exp(-q * (T - t)) * pnorm(dp) - K * exp(-r * (T - t)) * pnorm(dm)
+}
+```
+
+
+
+
+```{r}
+#Calculate and plot the value of Black-Scholes price with respect to the volatility
+#From the plot we can see that with volatility close to 0.3, the error from the real option price is close to 0.
+sigmas <- seq(0.05, 0.5, by=0.01)
+fsig <- bs(50, 0.5, 0.0, 45, 0.06, sigmas, 0.02) - 8
+plot(sigmas, fsig, type="l", col="red", xlab=expression(sigma), ylab=expression(f(sigma)), lwd=2)
+```
+
+
+```{r}
+#Create a function that calculates the bisection value f(c) until the error is within the tolerance of 0.00001
+bisection <- function(f, a, b, tol=0.00001) {
+  while (b - a > tol) {
+    c <- (a + b) / 2
+    if (sign(f(c)) == sign(f(a)))
+      a <- c
+    else
+      b <- c
+  }
+  (a + b) / 2
+}
+```
+
+
+```{r}
+#calculate the volatility for this Black-Scholes formula
+fsig <- function (sigma)
+  bs(50, 0.5, 0.0, 45, 0.06, sigma, 0.02) - 8
+bisection(fsig, 0.2, 0.4)
+```
+
+
+```{r}
+#calculate the Black-Scholes price
+bs(50, 0.5, 0, 45, 0.06, 0.3433594, 0.02)
+```
+
+
+```{r}
+#define the function g and returns the value of g(x) - 0 with the input of x
+g <- function(x) {
+  x^3 - 5*x^2 -7*x
+}
+```
+
+```{r}
+#plot the g(x) - 0 with respect to values of x, and find that the g(x) is closest to 0 when x is around 6
+x <- seq(5.5, 7, by=0.01)
+g <- g(x)
+plot(x, g, type="l", col="red", xlab=expression(sigma), ylab=expression(f(sigma)), lwd=2)
+```
+
+```{r}
+#calculate the estimated x value
+bisection(g, 5.5, 7)
+```
+
+
+```{r}
+#calculate the function f(x) with input of x
+f <- function(x) {
+  -x^5 -cos(x)
+}
+#calculate the derivative of f(x)
+df <- function(x) {
+  -5*x^4 + sin(x)
+}
+```
+
+```{r}
+#calculate the Newton's method to find the solution x such that f(x) = 0, counter keeps track of how many time of iterations
+u <- 500
+x <- 1
+counter <- 0
+while ((abs(u) / abs(x)) > 1e-4) {
+  u <- abs(f(x) / df(x))
+  x <- x - u
+  counter <- counter + 1
+}
+counter
+x
+```
+
+
+```{r}
+f(x) - 0
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

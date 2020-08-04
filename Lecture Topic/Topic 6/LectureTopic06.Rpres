@@ -1,0 +1,585 @@
+CFRM 420 Autumn 2019
+========================================================
+author: Nam Lee
+date: 
+autosize: false
+transition: rotate
+
+
+Chapter 11: transform-both-sides (TBS) regression, Box-Cox transformation model, binary response regression, least-trimmed sum of squares (LTS) regression
+
+Chapter 21: local polynomial regression, optimal bandwidth, spline regression
+
+
+$\newcommand{\eps}{\varepsilon}$
+$\newcommand{\Var}{\operatorname{Var}}$
+$\newcommand\Cov{\operatorname{Cov}}$
+$\newcommand{\sig}{\sigma}$
+$\newcommand{\al}{\alpha}$
+$\newcommand{\Xb}{\bar{X}}$
+$\newcommand{\Yb}{\bar{Y}}$
+$\newcommand\Eb{\mathbb{E}}$
+$\newcommand\Pb{\mathbb{P}}$
+$\newcommand\Qb{\mathbb{Q}}$
+$\newcommand\Rb{\mathbb{R}}$
+$\newcommand\Zb{\mathbb{Z}}$
+$\newcommand\Nb{\mathbb{N}}$
+$\newcommand\Av{\textbf{A}}$
+$\newcommand\Fv{\textbf{F}}$
+$\newcommand\Gv{\textbf{G}}$
+$\newcommand\Hv{\textbf{H}}$
+$\newcommand\Kv{\textbf{K}}$
+$\newcommand\Iv{\textbf{I}}$
+$\newcommand\Pv{\textbf{P}}$
+$\newcommand\Sv{\textbf{S}}$
+$\newcommand\Xv{\textbf{X}}$
+$\newcommand\Yv{\textbf{Y}}$
+$\newcommand\Zv{\textbf{Z}}$
+$\newcommand\av{\mathbf{a}}$
+$\newcommand\xv{\mathbf{x}}$
+$\newcommand\yv{\mathbf{y}}$
+$\newcommand\zv{\mathbf{z}}$
+$\newcommand\Cv{\mathbf{C}}$
+$\newcommand\mv{\mathbf{m}}$
+$\newcommand\nv{\mathbf{n}}$
+$\newcommand\pv{\mathbf{p}}$
+$\newcommand\sv{\mathbf{s}}$
+$\newcommand\wv{\mathbf{w}}$
+$\newcommand\Wv{\textbf{W}}$
+$\newcommand\betav{{\boldsymbol\beta}}$
+$\newcommand\etav{{\boldsymbol\eta}}$
+$\newcommand\epsv{{\boldsymbol\varepsilon}}$
+$\newcommand\delv{{\boldsymbol\delta}}$
+$\newcommand\Lamv{{\boldsymbol\Lambda}}$
+$\newcommand\lamv{{\boldsymbol\lambda}}$
+$\newcommand\muv{{\boldsymbol\mu}}$
+$\newcommand\piv{{\boldsymbol\pi}}$
+$\newcommand\Pbh{\widehat{\Pb}}$
+$\newcommand\Ebh{\widehat{\Eb}}$
+$\newcommand\Qh{\widehat{Q}}$
+$\newcommand\Ih{\widehat{I}}$
+$\newcommand\pih{\widehat{\pi}}$
+$\newcommand\Pih{\widehat{\Pi}}$
+$\newcommand\Wh{\widehat{W}}$
+$\newcommand\Fh{\widehat{F}}$
+$\newcommand\Yh{\widehat{Y}}$
+$\newcommand\Yvh{\widehat{\Yv}}$
+$\newcommand\Ah{\widehat{\Ac}}$
+$\newcommand\uh{\widehat{u}}$
+$\newcommand\vh{\widehat{v}}$
+$\newcommand\fh{\widehat{f}}$
+$\newcommand\hh{\widehat{h}}$
+$\newcommand\Bh{\widehat{B}}$
+$\newcommand\rhoh{\widehat{\rho}}$
+$\newcommand\nuh{\widehat{\nu}}$
+$\newcommand\varphih{\widehat{\varphi}}$
+$\newcommand\alh{\widehat{\al}}$
+$\newcommand\thetah{\widehat{\theta}}$
+$\newcommand\betah{\widehat{\beta}}$
+$\newcommand\betavh{\widehat{\boldsymbol\beta}}$
+$\newcommand\kaph{\widehat{\kappa}}$
+$\newcommand\sigh{\widehat{\sigma}}$
+$\newcommand\epsh{\widehat{\eps}}$
+$\newcommand\epsvh{\widehat{\epsv}}$
+$\newcommand\epst{\widetilde{\eps}}$
+$\newcommand\muh{\widehat{\mu}}$
+$\newcommand\dd{\mathrm{d}}$
+$\newcommand\ee{\mathrm{e}}$
+
+
+
+Transform-both-sides (TBS)
+=========
+
+* TBS regression is a parametric nonlinear regression model. Its estimation and diagnostic is similar to other such models
+
+* The TBS regression is mainly used as a remedy for shortcomings in regression models, e.g. non-constant variance or non-normality of residuals
+
+* A function $h$ is said to be _monotonic_ if it is either increasing or decreasing but not both.  For example,
+    + $\sin(x)$ is not monotoic.  
+    + $h(x) = \exp(x)$ is monotoic 
+    + $h(x) = \exp(-x)$ is monotic
+
+
+
+Mathematics of TBS
+====== 
+
+* For any monotonic function $h(x)$, the following models are equivalent: 
+$$
+\begin{aligned}
+Y_n & = f(\Xv_n;\betav)\\
+h(Y_n) & = h\left(f(\Xv_n;\betav)\right)
+\end{aligned}
+$$
+
+* In a TBS regression, one applies a monotonic function to both the response
+variable and the regression function 
+$$
+\begin{align*}
+Y_n & = f(\Xv_n;\betav) + \eps_n\\
+h(Y_n) & = h\left(f(\Xv_n;\betav)\right) + \nu_n
+\end{align*}
+$$
+Note, however, that the two models are not equivalent because of the noise term
+
+Credit Default with NLS (first attempt)
+=========
+<font size='6'>
+```{r}
+DefaultData = read.table("DefaultData.txt",header=T)
+attach(DefaultData)
+freq2=freq/100
+
+fit_nls = nls(freq2 ~ exp(b1+b2*rating), start=list(b1=-5,b2=.5))
+sum_nls = summary(fit_nls)
+print(sum_nls)
+```
+</font>
+
+
+Credit Default with NLS (second attempt)
+==========
+Next, consider the TBS regression obtained by taking the square root of both sides
+
+$$
+\begin{align*}
+Y_n^{1/2} = e^{0.5\,\beta_0 + 0.5\, \beta_1 X_n} + \nu_n,
+\end{align*}
+$$
+where $\nu_n \sim N(0,\sigma^2)$.
+
+<font size='5'>
+```{r}
+fit_tbs = nls(sqrt(freq2) ~ exp(b1/2+b2*rating/2), start=list(b1=-6,b2=.5))
+sum_tbs = summary(fit_tbs)
+print(sum_tbs)
+```
+</font>
+
+Credit Default with NLSs (Comparison)
+==========
+<font size='4'>
+```{r echo=TRUE, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.6}
+par(mfrow=c(1,2)); 
+par(mar=c(4,4,4,4))
+
+coef_nls = as.numeric(sum_nls$coef[1:2])
+
+fitted_nls = -sum_nls$resid+freq2
+plot(fitted_nls,abs(sum_nls$resid),xlab="fitted values", ylab="absolute residual")
+fit_loess  = loess(abs(sum_nls$resid)~ fitted_nls,span=1,deg=1)
+ord_nls = order(fitted_nls)
+lines(fitted_nls[ord_nls],fit_loess$fit[ord_nls], col="red")
+qqnorm(sum_nls$resid,datax=T,main="",ylab="sample quantiles", xlab="theoretical quantiles")
+qqline(sum_nls$resid,datax=T, col="red")
+```
+</font>
+
+---
+
+<font size='4'>
+```{r echo=TRUE, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.6}
+par(mfrow=c(1,2))
+par(mar=c(5,4,1,4))
+
+coef_tbs = as.numeric(sum_tbs$coef[1:2])
+
+fitted_tbs = freq2 -sum_tbs$resid
+plot(fitted_tbs,abs(sum_tbs$resid),xlab="fitted values", ylab="absolute residual")
+fit_loess  = loess(abs(sum_tbs$resid)~ fitted_tbs,span=1,deg=1)
+ord_tbs = order(fitted_tbs)
+lines(fitted_tbs[ord_tbs],fit_loess$fit[ord_tbs], col="red")
+qqnorm(sum_tbs$resid,datax=T,main="",ylab="sample quantiles of residuals", xlab="Normal quantiles")
+qqline(sum_tbs$resid,datax=T, col="red")
+```
+</font>
+
+
+Comparing Credit Default Models 
+=========
+<font size='5'>
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.6}
+y = log(freq2[freq2>0])
+coef_bow = lm(y ~ rating[freq>0])$coefficients # Fitting Bluhm-Overbeck-Wagner model (a linear regression)
+par(mfrow=c(1,1));par(mar=c(4,4,1,1));rate_grid = seq(1,16,by=.01)
+plot(rate_grid, (coef_bow[1]+rate_grid*coef_bow[2]), type="l",ylim=c(-14.15,1),xlab="rating",ylab="log(default probability)")
+lines(rate_grid,( coef_nls[1]+coef_nls[2]*rate_grid) ,lty=2,col="red")
+lines(rate_grid,( coef_tbs[1]+coef_tbs[2]*rate_grid) ,lty=6,col="blue")
+points(rating,log(freq2+1e-6))
+legend("topleft",c("BOW","nonlinear","tbs","data"),lty=c(1,2,6,NA), pch=c("","","","o"),col=c("black","red","blue"))
+````
+</font>
+
+
+Loss Function of TBS
+======================
+
+* TBS regression works by assigning weights to observations in the sum of squares errors. 
+* The NLS objective function for the original model is 
+$$
+\sum_{n=1}^N \left[Y_n-f(\Xv_n;\betav)\right]^2,
+$$
+and TBS regression attribute the $n$-th observations with the $n$-th weight 
+$$
+\left[h'\left(f(\Xv_n;\betav)\right)\right]^2.
+$$
+
+
+Loss Function of TBS
+======================
+
+Consider Taylor's expansion of the NLS objective function for a TBS regression
+$$
+\begin{align*}
+    &\quad \sum_{n=1}^N \left[h(Y_n) - h\left(f(\Xv_n;\betav)\right)\right]^2 \\
+    &\approx
+    \sum_{n=1}^N \left[h'\left(f(\Xv_n;\betav)\right)\left(Y_n-f(\Xv_n;\betav)\right)\right]^2\\ 
+    &= \sum_{n=1}^N \left[h'\left(f(\Xv_n;\betav)\right)\right]^2\left[Y_n-f(\Xv_n;\betav)\right]^2
+\end{align*}
+$$
+
+
+Variance Stablizing Transformation in TBS
+==========
+* One of the main use of TBS regression is to restore constant variance of residuals
+* For this, the weight should be inversely proportional to the conditional variance of response given predictors
+$$
+\begin{align}
+    \left[h'\left(f(\Xv_n;\betav)\right)\right]^2\propto \frac{1}{\Var(Y_n|\Xv_n)}
+\end{align}
+$$
+* This relationship can be used to identify an appropriate monotone function $h(x)$  in the TBS regression
+
+Distributional Assumption for Credit Defaut Example 
+====================
+* The default rate  $Y_n$  in the previous example can be seen as the number of defaults (per each credit score category) divided by a fixed number (i.e. the total number of companies in that category)
+* Thus, a natural choice for the distribution of  $Y_n|\Xv_n$  is Poisson
+* Recall that $Y \sim Pois(\lambda)$ if its probability mass function is, for each $k=0,1,2,3,\ldots$, 
+$$
+\mathbb P(Y=k) = \lambda^k\exp(-\lambda)\frac{1}{k!},
+$$
+and can be shown that $\mathbb E[Y] = \lambda$ and $Var(Y) = \lambda$. 
+
+Distributional Assumption for Credit Defaut Example 
+====================
+* In particular, we assume that  
+$$
+Y_n|\Xv_n \sim Pois(\lambda_n)
+$$
+where $\lambda_n := f(\Xv_n;\betav)$. 
+* To find a function h that stabilizes the variance of errors, we may use the equation: 
+$$
+\begin{align*}    
+\left[h'\left(f(\Xv_n;\betav)\right)\right]^2
+& \propto \frac{1}{\Var(Y_n|\Xv_n)} \\
+& = \frac{1}{f(\Xv_n;\betav)}
+\end{align*}
+$$
+
+Variance Stablizing Transformation for Credit Defaut Example 
+====================
+* It suffices to have that for some constant $k>0$, $h(z)$ is such that 
+$$
+h^\prime(z) = \frac{k}{\sqrt{z}},
+$$
+* By integrating both sides, for some fixed constants $k$ and $C$, it suffices to have
+$$
+h(z) = 2\,k \sqrt{z} + C,
+$$ 
+* For example, take $k=1/2$ and $C=0$ to obtain 
+$$
+h(z)=\sqrt{z},
+$$ 
+and this yields the TBS regression that we fitted above. 
+
+
+Box-Cox Transformation 
+========== 
+
+* This transformation is also used for correcting abnormalities in regression diagnostic, such as 
+    + non-normality or non-constant variance of residuals
+* Only the response variable is transformed. To be concrete, consider 
+$$
+\begin{align*}
+Y_n^\al = \beta_0 + \beta_1\, X_{n,1} + \dots + \beta_p\,X_{n,p} + \eps_n
+\end{align*}
+$$
+where, $\alpha, \beta_0, \ldots, \beta_p$ are unknown parameters to be estimated.
+*  See section 5.15 of the textbook for a more detailed explanation of profile MLE
+
+Two Step Estimation Algorithm 
+=========
+
+__Step1:__ The parameter $\alpha$ is estimated by "profile MLE:"
+$$
+\begin{align*}
+\alh := \underset{\al}{\arg\max}\,L_{\max}(\al),
+\end{align*}
+$$
+where  
+$$
+L_{\max}(\al)=\underset{\betav}{\max} L(\al, \betav)
+$$ 
+and $L(\al, \betav)$ is the likelihood function (likelihood functions will be discussed later in the course).  
+Usually, a _"round value"_ near the maximizer $\alh$ is chosen.  
+
+__Step2:__ After identifying $\alh$, the following multiple linear regression model is fitted (using ordinary least squares):
+$$
+\begin{align*}
+Y_n^{\alh} = \beta_0 + \beta_1\, X_{n,1} + \dots + \beta_p\,X_{n,p} + \eps_n
+\end{align*}
+$$
+
+Simulated Example in R
+=================
+<font size='6'>
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.6}
+n = 80
+set.seed("781235")
+e = matrix(runif(12*n),nrow=n) %*% rep(1,12)
+e = abs(e)^4
+e= e/mean(e) 
+x1 = runif(n)
+x1 = sort(x1) 
+x2 = rbeta(n,6,.5)
+y = (8*x2 + x1 + 5*x1^3) + ( 4* x2 + x1 + 7*x1^3) * e
+pairs(~y+x1+x2)
+```
+</font>
+
+Diagnostic
+========== 
+Trying a polynomial regression 
+$$
+Y_n = \beta_0 + \beta_1 X_{n,1} + \beta_2 X_{n,1}^2 + \beta_3 X_{n,2} + \eps_n.
+$$
+Residuals analysis indicates non-constant variance and non-normality. 
+<font size='4'>
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.4}
+fit_linear = lm(y~poly(x1,2)+x2)
+par(mfrow=c(1,2));par(mar=c(5,4,1,4))
+plot(fit_linear$fitted,abs(rstudent(fit_linear)),xlab = "fitted values", ylab = "abs(rstudent)")
+fit_loess  = loess(abs(rstudent(fit_linear))~ fit_linear$fitted,span=1,deg=1)
+ord = order(fit_linear$fitted)
+lines(fit_linear$fitted[ord],fit_loess$fit[ord], col="red")
+qqnorm(rstudent(fit_linear),datax=T,xlab="theoretical quantiles",ylab="sample quantiles of rstudent")
+qqline(rstudent(fit_linear),datax=T, col="red")
+```
+</font>
+
+Finding a Box-Cox Transformation 
+======================
+* By using profile MLE, we find the estimate $\alh=-1$
+<font size='4'>
+```{r echo=TRUE, fig.align='center', dpi=300,out.width='800px', fig.heigth=1,fig.asp=0.6}
+# Profile MLE to obtain alpha
+library(MASS)
+boxcox(y~poly(x1,2)+x2,ylab="log-likelihood")
+```
+</font>
+
+Using a Box-Cox Transformation 
+================
+<font size='3'>
+```{r echo=TRUE, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.6}
+yinv = -1/y; lm_bc = lm(yinv~poly(x1,2)+x2)
+rstudent = rstudent(lm_bc)
+par(mfrow=c(1,2));par(mar=c(5,4,1,4))
+plot(lm_bc$fitted,abs(rstudent),xlab = "fitted values", ylab = "abs(rstudent)")
+fit_loess  = loess(abs(rstudent)~ lm_bc$fitted,span=1,deg=1)
+ord = order(lm_bc$fitted)
+lines(lm_bc$fitted[ord],fit_loess$fit[ord], col="red")
+qqnorm(rstudent,datax=T,xlab="theoretical quantiles",ylab="sample quantiles of rstudent")
+qqline(rstudent,datax=T, col="red")
+```
+</font>
+
+***
+
+<font size='3'>
+```{r echo=TRUE, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.4}
+fit_linear = lm(y~poly(x1,2)+x2)
+par(mfrow=c(1,2));par(mar=c(5,4,1,4))
+plot(fit_linear$fitted,abs(rstudent(fit_linear)),xlab = "fitted values", ylab = "abs(rstudent)")
+fit_loess  = loess(abs(rstudent(fit_linear))~ fit_linear$fitted,span=1,deg=1)
+ord = order(fit_linear$fitted)
+lines(fit_linear$fitted[ord],fit_loess$fit[ord], col="red")
+qqnorm(rstudent(fit_linear),datax=T,xlab="theoretical quantiles",ylab="sample quantiles of rstudent")
+qqline(rstudent(fit_linear),datax=T, col="red")
+```
+</font>
+
+Binary Response Regression 
+=====
+
+* For a simple classificaiton task, the response variable can only take one of two (discrete) values, say, 0 and 1, representing, e.g.
+    + Fraud or Not Fraud
+    + Cat or Not Cat 
+    + Credit Risk or Not
+* Consider the regression model 
+$$
+Y_n = f(\Xv_n;\betav)+\eps_n, 
+$$
+where $\varepsilon_n$ need not be normal (with zero mean)
+* Can we fit this model using the `nls` or `nl`?
+    + The answer is negative 
+    + Technically Yes, but too hacky
+    
+
+Binary Response Regression 
+=====
+* By taking the expectation on both sides, we have
+$$
+\mathbb P(Y_n=1| \mathbf X_n) = \mathbb E[Y_n| \mathbf X_n] = f(\Xv_n;\betav)
+$$
+whence we must have 
+$$
+0\le f(\Xv_n;\betav)\le1
+$$
+* In other words, for the binary response model, $Y_n|\Xv_n$ are i.i.d. Bernoulli random variables with parameter $p$
+$$
+p=\Pb(Y_n=1|\Xv_n) = f(\Xv_n;\betav)
+$$ 
+* Using Generalized linear models (GLM) is one approach for dealing with the constraint 
+
+Generalized Linear Model
+=================
+* Consider the parametric non-linear model
+$$
+\begin{align*}
+Y_n = H(\beta_0 + \beta_1\,X_{n,1} + \dots + \beta_p\,X_{n,p}) + \eps_n
+\end{align*}
+$$
+where $H(x)$ is a CDF and $\varepsilon_n$ is zero-mean.
+
+* $H(x)$ is a CDF (Cumulative Distribution Function)  if a non-decreasing function that satisfies 
+$$
+\begin{aligned}
+\lim_{x\to\infty}H(x) & =1 \\
+\lim_{x\to-\infty}H(x) & =0 
+\end{aligned}
+$$
+
+* $H(x)$ is said to be the link function (for the model)
+
+Link function for Binary Response Regression 
+========
+* <strong>Probit regression:</strong> H is the standard normal CDF given by 
+$$
+\displaystyle H(x) = \int_{-\infty}^x\frac{\ee^{-x^2/2}}{\sqrt{2\pi}}\dd x
+$$
+* <strong>Logit regression:</strong> H is the logistic CDF given by 
+$$
+\displaystyle H(x) = \frac{1}{1+\ee^{-x}}
+$$
+* In ML communities, these link functions are also said to be _activation function_ (for a neural network model)
+
+
+Likelihood Function
+==============================
+* Given the link function, the parameters $\beta_0, \ldots, \beta_p$ are estimated by Maximum Likelihood Estimation (MLE)
+* what is "likelihood" of observing a sample  $Y_1,\ldots,Y_N$, for parameter $\mathbf \beta$? 
+$$
+\begin{align*}
+    L(\betav) = \prod_{n=1}^N &amp;\Big[\Pb(Y_n=1|\Xv_n)\Big]^{Y_n}\Big[\Pb(Y_n=0|\Xv_n)\Big]^{1-Y_n}\\
+    =\prod_{n=1}^N &amp;\Big[H(\beta_0 + \beta_1\,X_{n,1} + \dots + \beta_p\,X_{n,p})\Big]^{Y_n}\\
+    &amp;~~~\Big[1-H(\beta_0 + \beta_1\,X_{n,1} + \dots + \beta_p\,X_{n,p})\Big]^{1-Y_n}
+\end{align*}
+$$
+
+Maximum Likelihood Estimator
+==============================
+The maximum likelihood estimator (MLE) of the model parameter is
+$$
+\begin{align*}
+    \betavh = \underset{\betav}{\arg\max}\, L(\betav)
+\end{align*}
+$$
+
+To solve this optimization problem, we need to use a numerical method (e.g. R)
+
+```{r eval=F}
+fit1= glm(card~log(reports+1)+income+log(share)+age+owner+dependents+months,family= binomial(link = "logit"), data=CreditCard_clean)
+```
+
+
+CreditCard Example for BRR
+=========
+* We use the dataset CreditCard in the R package AER, which contains various information about applicants for a certain credit card, along with the outcome of the application (stored in the column `card`)
+* Based on this sample of outcomes, we would like to assess the probability that a new application for the same credit card is accepted
+* We take `card` as the response variable and the application information as the predictors
+* This problem can be solved by a binary response regression (since the response variable, `card`, takes only two values yes or no)
+
+Data Load & Factor Representation
+=========
+
+* The following code load the data and remove nonsensical observations (the one with applicant age less than 18)
+<font size='5'>
+```{r}
+library("AER");
+library("faraway");
+library(MASS)
+data("CreditCard") 
+CreditCard_clean = CreditCard[CreditCard$age>18,]
+attach(CreditCard_clean)
+```
+</font>
+
+* See Example 11.7 in Section 11.6 of the textbook for a description of the data
+<font size=5>
+```{r eval=F}
+?CreditCard
+levels(CreditCard$card)
+print(CreditCard$card)
+print(as.numeric(CreditCard$card))
+print(as.character(CreditCard$card))
+```
+</font>
+
+
+Skewness (Asymetric Distribution)
+=== 
+Some are very skewed, which can lead to high-leverage points. So, the skewed variables are replaced with their logarithm
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='1400px', fig.heigth=1,fig.asp=0.6}
+par(mfrow=c(2,5))
+par(mar=c(5,5,2,2))
+hist(reports,main="reports")
+hist(income, main="income")
+hist(share, main="share")
+hist(age, main="age")
+hist(as.numeric(owner), main="owner",
+     breaks=2,xlab=" no   yes",axes=F,ylab="")
+h=hist(dependents,main="dependents",breaks=(0:7)-.5)
+hist(months,main="months")
+hist(log(share),main="log(share)")
+hist(log(reports+1),main="log(reports+1)")
+```
+
+Logistic Regression Model 
+==============
+<font size='5'>
+```{r}
+fit1= glm(card~log(reports+1)+income+log(share)+age+owner+dependents+months,family= binomial(link = "logit"), data=CreditCard_clean)
+summary(fit1)
+```
+</font>
+
+END OF LECTURE
+=== 
+
+<center>
+## Return Mic to Videographer!
+</center>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<script>
+
+for(i=0;i<$("section").length+1;i++) {
+if(i==0) continue
+$("section").eq(i).append("<p style='font-size:medium;position:fixed;right:10px;bottom:10px;'>" + i + "")
+}
+
+</script>
+
+

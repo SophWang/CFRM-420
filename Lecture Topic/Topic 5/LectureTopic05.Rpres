@@ -1,0 +1,558 @@
+CFRM 420 Autumn 2019
+========================================================
+author: Nam Lee
+date: 
+autosize: false
+transition: rotate
+
+Chapter 10: rstudent, Cook's D, checking model assumptions (non-normality, non-constant variance, and non-linearity)
+
+Chapter 11: Parametric non-linear regression
+
+
+$\newcommand{\eps}{\varepsilon}$
+$\newcommand{\Var}{\operatorname{Var}}$
+$\newcommand\Cov{\operatorname{Cov}}$
+$\newcommand{\sig}{\sigma}$
+$\newcommand{\al}{\alpha}$
+$\newcommand{\Xb}{\bar{X}}$
+$\newcommand{\Yb}{\bar{Y}}$
+$\newcommand\Eb{\mathbb{E}}$
+$\newcommand\Pb{\mathbb{P}}$
+$\newcommand\Qb{\mathbb{Q}}$
+$\newcommand\Rb{\mathbb{R}}$
+$\newcommand\Zb{\mathbb{Z}}$
+$\newcommand\Nb{\mathbb{N}}$
+$\newcommand\Av{\textbf{A}}$
+$\newcommand\Fv{\textbf{F}}$
+$\newcommand\Gv{\textbf{G}}$
+$\newcommand\Hv{\textbf{H}}$
+$\newcommand\Kv{\textbf{K}}$
+$\newcommand\Iv{\textbf{I}}$
+$\newcommand\Pv{\textbf{P}}$
+$\newcommand\Sv{\textbf{S}}$
+$\newcommand\Xv{\textbf{X}}$
+$\newcommand\Yv{\textbf{Y}}$
+$\newcommand\Zv{\textbf{Z}}$
+$\newcommand\av{\mathbf{a}}$
+$\newcommand\xv{\mathbf{x}}$
+$\newcommand\yv{\mathbf{y}}$
+$\newcommand\zv{\mathbf{z}}$
+$\newcommand\Cv{\mathbf{C}}$
+$\newcommand\mv{\mathbf{m}}$
+$\newcommand\nv{\mathbf{n}}$
+$\newcommand\pv{\mathbf{p}}$
+$\newcommand\sv{\mathbf{s}}$
+$\newcommand\wv{\mathbf{w}}$
+$\newcommand\Wv{\textbf{W}}$
+$\newcommand\betav{{\boldsymbol\beta}}$
+$\newcommand\etav{{\boldsymbol\eta}}$
+$\newcommand\epsv{{\boldsymbol\varepsilon}}$
+$\newcommand\delv{{\boldsymbol\delta}}$
+$\newcommand\Lamv{{\boldsymbol\Lambda}}$
+$\newcommand\lamv{{\boldsymbol\lambda}}$
+$\newcommand\muv{{\boldsymbol\mu}}$
+$\newcommand\piv{{\boldsymbol\pi}}$
+$\newcommand\Pbh{\widehat{\Pb}}$
+$\newcommand\Ebh{\widehat{\Eb}}$
+$\newcommand\Qh{\widehat{Q}}$
+$\newcommand\Ih{\widehat{I}}$
+$\newcommand\pih{\widehat{\pi}}$
+$\newcommand\Pih{\widehat{\Pi}}$
+$\newcommand\Wh{\widehat{W}}$
+$\newcommand\Fh{\widehat{F}}$
+$\newcommand\Yh{\widehat{Y}}$
+$\newcommand\Yvh{\widehat{\Yv}}$
+$\newcommand\Ah{\widehat{\Ac}}$
+$\newcommand\uh{\widehat{u}}$
+$\newcommand\vh{\widehat{v}}$
+$\newcommand\fh{\widehat{f}}$
+$\newcommand\hh{\widehat{h}}$
+$\newcommand\Bh{\widehat{B}}$
+$\newcommand\rhoh{\widehat{\rho}}$
+$\newcommand\nuh{\widehat{\nu}}$
+$\newcommand\varphih{\widehat{\varphi}}$
+$\newcommand\thetah{\widehat{\theta}}$
+$\newcommand\betah{\widehat{\beta}}$
+$\newcommand\betavh{\widehat{\boldsymbol\beta}}$
+$\newcommand\kaph{\widehat{\kappa}}$
+$\newcommand\sigh{\widehat{\sigma}}$
+$\newcommand\epsh{\widehat{\eps}}$
+$\newcommand\epsvh{\widehat{\epsv}}$
+
+
+
+```{r echo=F}
+require(quantmod)
+set.seed(99)
+x = 1:11
+x[11] = 50 # A high-leverage observation
+y=1+x+rnorm(11)
+y2 = y
+y2[11] = 5.254
+x2 = x
+x2[11] = 5.5
+model_a = lm(y~x)
+model_b = lm(y2~x)
+model_c = lm(y~x2)
+cexx = c(rep(2,10),2)
+col <- c(rep(4,10),2)
+```
+
+
+Finding an outlier from residuals 
+========
+* Under ideal circumstances, the "raw" residuals 
+$$
+\epsh_n = Y_n - \Yh_n
+$$ 
+are approximately i.i.d. $N(0,\sig_{\eps}^2)$.  
+* So, Under ideal circumstances,  the condition $|\epsh_n| > 3\sig_{\eps}$ can detect residual outliers? 
+
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='800px', fig.heigth=1,fig.asp=0.4}
+par(mfrow=c(1,3))
+models = list(a=model_a, b=model_b, c=model_c)
+for(i in 1:length(models)){
+  model = models[[i]]
+  sigma = summary(model)$sigma
+  minresid = min(resid(model))
+  maxresid = max(resid(model))
+  plot(resid(model), ylim = c(min(-5*sigma, minresid), max(5*sigma, maxresid)),
+       ylab="raw residual",main=names(models)[i],cex=cexx,col=col, pch=18)
+  abline(h=c(-3*sigma, 3*sigma),lwd=1,col=2)
+}
+```
+
+
+
+Residuals at high leverage points 
+======
+
+* Residual outlier at high-leverage points are not detectable by looking at raw residuals. The problem is that such residuals have small size
+
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.4}
+par(mfrow=c(1,3))
+plot(x,y,ylim=c(0,60),cex=cexx,pch=18,col=col,main="(a)");abline(model_a,lwd=2)
+plot(x,y2,ylim=c(0,60),cex=cexx,pch=18,col=col,ylab="y2",main="(b)");abline(model_b,lwd=2)
+plot(x2,y,ylim=c(0,60),cex=cexx,pch=18,col=col,xlab="x2",main="(C)");abline(model_c,lwd=2)
+```
+
+
+Two approaches 
+========
+
+* Internally Studentized Residuals
+
+$$
+\begin{align}
+\frac{\epsh_n}{\sigh_\eps\sqrt{1-H_{nn}}}
+\end{align}
+$$
+
+* Externally Studentized Residuals (rstudent)
+
+$$
+\begin{align*}
+   \text{rstudent}_n := \frac{\epsh_n}{\sigh_{\eps,(-n)}\sqrt{1-H_{nn}}}
+\end{align*}
+$$
+
+Here, $\sigh_{\eps,(-n)}$ is the residual standard error for a regression model which uses all but the n-th observation $(X_{n,1},\dots,X_{n,p}, Y_n)$
+
+Key Ideas of Studentized Residuals
+=============
+* To account for the small size of $\epsh_n$ at high-leverage points, we "studentize" the residuals by dividing by their standard error:
+
+$$
+\begin{align}
+\Cov\left(\epsvh\right) 
+& = \Cov\left(\Yv - \Yvh\right)\\
+& = \Cov\left(\Yv - H \Yv\right)\\
+& = (I-H)\Cov\left(\Yv\right)(I-H)^\top \\
+& = \sig^2_\eps(I-H)(I-H)^\top \\
+& = \sig^2_\eps(I-H)
+\end{align}
+$$
+
+* Internally studentized residuals have a problem: a residual outlier inflates $\sigh_\eps^2$, which makes internally studentized residuals to be small. 
+
+
+Does it work?
+=============
+
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='800px', fig.heigth=1,fig.asp=0.4}
+par(mfrow=c(1,3))
+for(i in 1:length(models)){
+  model = models[[i]]
+  sigma = summary(model)$sigma
+  intrstudent = resid(model)/sigma/sqrt(1-hatvalues(model))
+  min_intrstudent = min(intrstudent)
+  max_intrstudent = max(intrstudent)
+  plot(intrstudent, ylim = c(min(-5, min_intrstudent), max(5, max_intrstudent)),
+       ylab="internally studentized residual",main=names(models)[i],cex=cexx,col=col, pch=18)
+  abline(h=c(-3, 3),lwd=0.5,col=2)
+}
+```
+```{r echo=FALSE, fig.align='center', dpi=200,out.width='800px', fig.heigth=1,fig.asp=0.4}
+par(mfrow=c(1,3))
+for(i in 1:length(models)){
+  model = models[[i]]
+  sigma = summary(model)$sigma
+  min_rstudent = min(rstudent(model))
+  max_rstudent = max(rstudent(model))
+  plot(rstudent(model), ylim = c(min(-5, min_rstudent), max(5, max_rstudent)),
+       ylab="rstudent",main=names(models)[i],cex=cexx,col=col, pch=18)
+  abline(h=c(-3, 3),lwd=1,col=2)
+}
+```
+
+Cook's distance (Cook's D)
+=========================
+type: section 
+
+
+Cook's distance (Cook's D)
+=========================
+
+* Leverage and rstudent can indicate potential problems. 
+* How much influence an observation has on estimates? 
+* This information can be obtained by Cook's D
+$$
+\begin{align*}
+    \text{Cook's D}_n := \frac{\sum_{k=1}^N \left(\Yh_k - \Yh_k(-n)\right)^2}{\sigh_\eps^2(p+1)}
+\end{align*}
+$$
+where $\Yh_k(-n)$ is the $k$-th fitted value using $\betah$ that are estimated with the $n$-th observation excluded
+
+
+High Influence Points 
+===================
+
+* Cook's D measures how much (on average) the fitted values change if an observation is deleted
+* It directly measures the influence of an observation
+* Observations with high Cook's D are called "high-influence" points (or observations)
+* To find high influence points, find outliers in Cook's D
+
+```{r echo=T, eval=F}
+sqrt(cooks.distance(model))
+```
+
+Cook's D Example 
+================
+
+* To detect high influence points, we can use the half-normal plots of the square root of Cook's D statistics
+* A half-normal plot is a good graphical tool to detect outliers in a sample
+
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.4}
+par(mfrow=c(1,3))
+models = list(a=model_a, b=model_b, c=model_c)
+for(i in 1:length(models)){
+  model = models[[i]]
+  plot(sqrt(cooks.distance(model)), ylim = c(0,11), ylab=("square root Cook's D"), main=names(models)[i],cex=cexx,col=col, pch=18)
+}
+```
+
+Half-Normal plots
+==================
+
+* A half-normal plot is the QQ plot of the sample quantiles of the absolute value of a sample against the quantile of  $|Z|$, where  $Z\sim N(0,1)$
+* The main use of half-normal plots is to detect outliers, not to compare distributions
+* Look for points that are "detached" from the rest of the sample
+* Non-linearity does not matter
+
+```{r echo=T, eval=F}
+library(faraway) 
+halfnorm(sqrt(cooks.distance(model_a)))
+```
+
+
+Half-Normal plots in R 
+==================
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='800px', fig.heigth=1,fig.asp=0.4}
+
+library(faraway) # needed for half normal plots
+par(mfrow=c(1,3))
+halfnorm(sqrt(cooks.distance(model_a)), xlim=c(0,1.85), ylab=("square root Cook's D"))
+halfnorm(sqrt(cooks.distance(model_b)), xlim=c(0,1.85), ylab=("square root Cook's D"))
+
+halfnorm(sqrt(cooks.distance(model_c)), xlim=c(0,1.85), ylab=("square root Cook's D"),cex=10)
+```
+
+Checking Model Assumptions 
+====== 
+type: section 
+
+Problems to look for in a linear regression model:
+
+* Non-normality of the errors
+* Non-constant variance of the errors
+* Non-linearity of the effects of predictors on the response
+* Correlation (i.e. dependence) of the error terms -- Timeseries
+
+
+Residual Analysis 
+========
+
+Recall that our main assumption for a linear regression model is that $\eps_n\overset{i.i.d.}{\sim}N(0,\sig_\eps^2)$
+
+Since the $n$-th residual $\epsh_n:=Y_n-\Yh_n$ is an estimate of the $n$-th error $\eps_n$, we can use the residuals to check the validity of the model assumptions
+
+This analysis is generally conducted by various plots of residuals, each designed to highlight one or more of the problems
+
+Always use the <strong>externally studentized residuals (rstudent)</strong> for residual analysis!
+
+
+Non-normality
+================
+* The best tool for detecting non-normality of residuals is a normal-probability plot of rstudent
+* An accompanying histogram or KDE is also helpful to identify the problem
+* In most financial data, residuals are non-normal because of too many outliers, i.e. they are heavy-tailed
+* Always check if the outliers are the result of an error in data entry.
+* If they were, correct them or remove them. If they are genuine data, never eliminate them.
+
+
+Non-normality
+================
+
+* In case of outliers that are genuine data, a good practice to repeat your
+analysis with the outliers removed. 
+* If the end result of your analysis did not change after removing the outliers, you will be more confident that the model your are using is relevant. 
+* However, if the result changed after removing the
+outliers, then it is an indication that your model is too simplistic, and you
+should use a model that better fits the data
+</font>
+
+```{r echo=F, results='hide'}
+library(quantmod)
+getSymbols(c("WAAA","DGS10","DGS30"), src="FRED")
+dat <- na.locf(merge(WAAA,DGS10,DGS30))[index(WAAA)]["1977-02-16/1993-12-31"]
+AAA_dif = diff(as.vector(dat[,"WAAA"]))
+DGS10_dif = diff(as.vector(dat[,"DGS10"]))
+DGS30_dif = diff(as.vector(dat[,"DGS30"]))
+fit <- lm(AAA_dif ~ DGS10_dif+DGS30_dif)
+```
+
+Using a normal plot to detect non-normality
+=============
+
+```{r echo=F, fig.align='center'}
+
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='800px', fig.heigth=1,fig.asp=0.7}
+par(mfrow=c(1,2))
+qqnorm(rstudent(fit), datax = TRUE,
+       xlab = "normal quantile", # this is for the theoretical quantiles
+       ylab = "rstudent", # this is for the sample quantiles
+       main = "normal probability plot for rstudent")
+qqline(rstudent(fit), datax=TRUE, col = 2)
+d <- density(rstudent(fit), adjust = 1, na.rm = TRUE)
+plot(d, type = "n", xlim=c(-5,5), main="KDE for rstudent residuals and N(0,1) density") # more sophisticated plot
+polygon(d, col = "wheat")
+z = seq(from=-5,to=5,by=.01)
+lines(z,dnorm(z), lty=2,lwd=3,col="red")
+```
+
+Leverage plot, Residual plot, and Half normal plot of square-root of Cook's D
+=============
+
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.4}
+par(mfrow=c(1,3))
+plot(hatvalues(fit), ylab="leverage",main="Leverage plot", ylim=c(0,.05))
+p=3;n=length(AAA_dif);
+abline(h=2*((p+1)/n),lwd=0.5,col=2)
+
+sigma = summary(fit)$sigma
+min_rstudent = min(rstudent(fit))
+max_rstudent = max(rstudent(fit))
+plot(rstudent(fit), ylim = c(min(-5, min_rstudent), max(5, max_rstudent)),
+     ylab="rstudent",main="rstudent residual plot")
+abline(h=c(-3, 3),lwd=0.5,col=2)
+
+halfnorm(sqrt(cooks.distance(fit)), xlim=c(0,5), nlab = 4,
+         ylab=("square root Cook's D"), main="Half normal plots of square-root of Cook's D")
+```
+
+
+
+Non-constant Variance
+======================
+
+* The variance of error may change between observations
+* Financial data often have the property that larger responses are more variable
+* To detect non-constant variance, plot the absolute value of rstudent against the fitted values
+* An increasing (or other systematic) trend is an indication of non-constant variance
+* A scatter plot smoother such as "loess" (a non-parametric regression model) are usually included to highlight trends
+* To remedy non-constant variance, we may transform the data or use regression models with GARCH error, which we will study later in the course
+
+
+Non-constatnt Variance
+======================
+<font size=5>
+```{r echo=T, fig.align='center', dpi=300,out.width='800px', fig.heigth=1,fig.asp=0.6}
+plot(fitted(fit), abs(rstudent(fit)), xlab = "fitted values", ylab = "abs(rstudent)",
+     main = "Absolute residual plot with a smoother")
+smoother = loess(abs(rstudent(fit)) ~ fitted(fit))
+ord = order(fitted(fit)) # why do we need this line? 
+lines(fitted(fit)[ord], fitted(smoother)[ord], col="red", lwd=2)
+```
+</font>
+
+Parametric Nonlinear Regression
+===============================
+type: section 
+
+* In many applications, linear models do not capture the reality (according to Box's quote, they are not useful)
+* One generalization is to use non-linear, but prespecified, functions
+* Such models are called "parametric non-linear regression" models
+
+
+Non-linearity 
+=============
+* To detect nonlinear relationship between response and predictors, plot rstudent against predictor values
+* A systematic nonlinear trend in this plot indicates that the effect of predictors on response is nonlinear
+
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.4}
+par(mfrow=c(1,2))
+preds = list(DGS10_dif, DGS30_dif);labs = list("DGS10_dif", "DGS30_dif")
+for (p in 1:length(preds)) {
+  X = preds[[p]]
+  plot(X, rstudent(fit),
+       xlab = labs[[p]], ylab = "rstudent)",
+       main = paste("residual vs. ", labs[[p]]))
+  smoother = loess(rstudent(fit) ~ X); ord = order(X)
+  lines(X[ord], fitted(smoother)[ord], col="red", lwd=2)
+}
+```
+
+
+Mathematical Formulation 
+========================
+* $\{(Y_n, \Xv_n)\}_{n=1}^N$ is a sample of observations 
+* $f$ is a known function (called the regression equation or function) parameterized by $\betav$, where $\betav=(\beta_1,\dots,\beta_p)$ is a vector of unknown parameters
+* $\betav$ is estimated by non-linear least sum of squares (NLS) estimator:
+$$
+\begin{align*}
+    \betavh = \underset{\betav}{\arg\min}\,\sum_{n=1}^N \Big(Y_n - f(\Xv_n;\betav)\Big)^2
+\end{align*}
+$$
+* Many statistical softwares (including R) have functions that numerically obtain NLS estimators
+
+Model Diagnostics
+============ 
+
+* Once $\betav$ is found, the fitted values and the residuals are 
+$$
+\Yh_n = f(\Xv_n;\betavh) \\ 
+\epsh_n=Y_n-\Yh_n
+$$ 
+* each $\epsh_n$ estimates $\eps_n$
+* $\{\eps_n\}_{n=1}^N$ are assumed to be white noise (that is, they are i.i.d. with zero variance)
+* Diagnostic of parametric regression models is similar to diagnostic of linear regression model
+* The general parametric regression model:
+
+$$
+\begin{align*}
+    Y_n = f(\Xv_n;\betav) + \eps_n;\quad n\in\{1,\dots,N\}
+\end{align*}
+$$
+
+Practical Tips for Diagnostics
+============ 
+* One should check that:
+  * There is no systematic pattern in the residuals: plot raw residuals vs. fitted values
+  * Residuals are uncorrelated (we will talk about test for detecting correlation later in the course)
+  * Residuals have constant conditional variance: use the plot of raw absolute residual vs. fitted values
+  * Check if the residuals are normally distributed
+* It is possible to define externally studentized residuals (rstudent) for nonlinear models. However, in this course, it suffices to use the raw residuals for diagnostics of parametric non-linear models
+
+Example : Credit Rating
+======= 
+* Consider the relationship between credit rating of a company and its probability of default
+* We look at a sample of companies over a period. The credit ratings are labeled as 1 (the best credit rating of AAA) to 16 (the worst credit rating of B3)
+* Let  $Y_n$  be the precentage of the companies with credit rating $X_n$  that defaulted over a fixed period of time
+* We propose the following regression models:
+
+$$
+\begin{align*}
+    & Y_n = e^{\beta_0 + \beta_1 X_n + \eps_n};\quad \eps_n\overset{i.i.d.}{\sim} N(0,1)\\
+    & Y_n = e^{\beta_0 + \beta_1 X_n} + \eps_n;\quad \eps_n\overset{i.i.d.}{\sim} N(0,1)
+\end{align*}
+$$
+
+Linearity in Disguise 
+======= 
+* The first model is a linear multiple regression model "in disguise"
+* We can re-write it as follows: define $\tilde{Y}_n=\log Y_n$, such that
+$$
+\begin{align*}
+    \tilde{Y}_n = \beta_0 + \beta_1 X_n + \eps_n;\quad \eps_n\overset{i.i.d.}{\sim} N(0,1)
+\end{align*}
+$$
+* The second model is truly non-linear
+* Some nonlinearities are <strong>"removable."</strong> For example, polynomial regression mode, where $f(x;\betav) = \beta_0 + \beta_1\,x + \dots + \beta_p\,x^p$, can be transform to a linear multiple regression model (can guess how?) 
+* Read section 11.7 of the textbook for further information
+
+Credit Rating Model in R 
+==========
+<font size='6'>
+```{r}
+DefaultData = read.table("DefaultData.txt",header=T)
+attach(DefaultData)
+
+freq2=freq/100
+y = log(freq2[freq2>0])
+
+# Fitting Bluhm-Overbeck-Wagner model
+fit_bow = lm(y ~ rating[freq>0])
+
+# Fitting non-linear least squares
+fit_nls = nls(freq2 ~ exp(b1+b2*rating), start=list(b1=-5,b2=.5))
+
+sum_nls = summary(fit_nls)
+coef_nls = as.numeric(sum_nls$coef[1:2])
+rate_grid = seq(1,16,by=.01)
+coef_bow = fit_bow$coefficients
+```
+</font>
+
+
+Credit Rating Model in R 
+==========
+<font size='3'>
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.6}
+par(mfrow=c(1,2));par(mar=c(4,4,2,2))
+plot(rating,freq2,ylim=c(-.0001,.13),pch="*",ylab="frequency",cex=1.5)
+lines(rate_grid,exp( coef_nls[1]+coef_nls[2]*rate_grid))
+legend("topleft",c("exponential","data"),lty=c(1,NA), pch=c("","*"),pt.cex=c(1, 1.5))
+plot(rate_grid, (coef_bow[1]+rate_grid*coef_bow[2]), type="l",ylim=c(-14.15,1),xlab="rating",ylab="log(default probability)") 
+lines(rate_grid,( coef_nls[1]+coef_nls[2]*rate_grid) ,lty=2,col="red")
+points(rating,log(freq2+1e-6))
+legend("topleft",c("BOW","nonlinear"),lty=c(1,2,NA),pch=c("",""),col=c("black","red"))
+```
+</font> 
+
+
+Credit Rating Model Diagnostics in R
+==========
+<font size='3'>
+```{r echo=FALSE, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.6}
+par(mfrow=c(1,2)); par(mar=c(4,4,4,4))
+fitted_nls = -sum_nls$resid+freq2
+plot(fitted_nls,abs(sum_nls$resid),xlab="fitted values", ylab="absolute residual")
+fit_loess  = loess(abs(sum_nls$resid)~ fitted_nls,span=1,deg=1)
+ord_nls = order(fitted_nls)
+lines(fitted_nls[ord_nls],fit_loess$fit[ord_nls], col="red")
+qqnorm(sum_nls$resid,datax=T,main="",ylab="sample quantiles", xlab="theoretical quantiles")
+qqline(sum_nls$resid,datax=T, col="red")
+```
+</font>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<script>
+
+for(i=0;i<$("section").length+1;i++) {
+if(i==0) continue
+$("section").eq(i).append("<p style='font-size:medium;position:fixed;right:10px;bottom:10px;'>" + i + "")
+}
+
+</script>

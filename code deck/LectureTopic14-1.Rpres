@@ -1,0 +1,832 @@
+CFRM 420 
+========================================================
+author: Nam Lee
+date: Autumn 2019
+autosize: false
+
+Chapter 18: Principal component analysis
+
+```{r}
+library(urca)
+library(MASS)
+library(pracma)
+```
+
+Cointegration: Connection to PCA
+=======
+* The CokePepsi.csv data set contains the adjusted daily closing prices of Coke and Pepsi stock from Jan 2007 to Nov 2012. 
+<font size=5>
+```{r echo=T, fig.align='center', dpi=300,out.width='800px', fig.heigth=1,fig.asp=0.5}
+CokePepsi = read.table("CokePepsi.csv", header=T)
+ts.plot(CokePepsi)
+```
+</font>
+
+Cointegration: Connection to PCA
+=======
+
+```{r echo=T, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.5}
+ts.plot(CokePepsi[,2] - CokePepsi[,1])
+```
+
+Cointegration: Connection to PCA
+======
+<font size=5>
+```{r}
+summary(ca.jo(CokePepsi))
+```
+</font>
+
+Cointegration: Connection to PCA
+=====
+* Now consider the daily adjusted closing prices for 10 company stocks from January 2, 1987 to September 1, 2006 from the `Stock_FX_Bond.csv` dataset.
+<font size=5>
+```{r echo=F, fig.align='center', dpi=300,out.width='800px', fig.heigth=1,fig.asp=0.5}
+Stock_FX_Bond = read.csv("Stock_FX_Bond.csv", header=T)
+adjClose = Stock_FX_Bond[,seq(from=3, to=21, by=2)]
+plot.ts(adjClose)
+```
+</font>
+
+Cointegration: Connection to PCA
+=====
+<font size=5>
+```{r}
+jo_obj  = ca.jo(adjClose)
+summary(jo_obj)
+```
+</font>
+
+Cointegration: Connection to PCA
+=====
+<font size=5>
+```{r echo=T, fig.align='center', dpi=300,out.width='1000px', fig.heigth=1,fig.asp=0.5}
+O = jo_obj@V[,1:6] 
+adClose_stationary_comp = as.matrix(adjClose) %*% O
+plot.ts(adClose_stationary_comp)
+```
+</font>
+
+
+
+Matrix Theory Refresher
+================
+* Let ${\mathbf \Sigma}$ be an $n\times n$ matrix.  Assume that there is a non-zero vector $e\in{\mathbb R}^n$ such that 
+$$
+{\mathbf \Sigma}\,e = {\lambda}\,e,
+$$
+for a constant $\lambda$ ($\lambda$ can be zero).  Then, $\lambda$ is an eigenvalue of ${\mathbf \Sigma}$ and $e$ is a corresponding eigenvector
+
+
+Matrix Theory Refresher
+================
+
+* Let ${\mathbf \Sigma}$ be a __symmetric__ $n\times n$ matrix. Then, the eigendecomposition of ${\mathbf \Sigma}$ is
+
+<font size=5>
+$$
+\begin{aligned}
+{\mathbf \Sigma} 
+&= {\mathbf E}\,{\mathbf \Lambda}\,{\mathbf E}^\top \\ 
+& = [e(1), e(2),\dots, e(p)]\, \text{diag}({\lambda}_1,\dots,{\lambda}_n)\,[e(1), e(2),\dots, e(p)]^\top
+\end{aligned}
+$$
+</font>
+
+* Here, ${\lambda}_1,\dots,{\lambda}_p$ are non-zero eigenvalues of ${\mathbf \Sigma}$, $e(k)$ is the eigenvector of ${\lambda}_k$, and $\text{diag}({\lambda}_1,\dots,{\lambda}_n)$ is a diagonal matrix of eigenvalues
+* We may also assume that:
+* ${\mathbf E}^\top{\mathbf E} = I$, where $I$ is the identity matrix. In particular, $\|e(k)\|^2 = 1$ and $e(k).e(l)=0$ for $k\ne l$
+* ${\lambda}_1\ge{\lambda}_2\ge\dots\ge{\lambda}_p$
+
+
+
+Principal Component Analysis 
+================
+* Principal Component Analysis (PCA) is a __"dimensionality reduction"__ technique
+* Suppose that we are given a sample of n observations, where each observation take values in $\mathbb R^d$, e.g., for each $i$, 
+
+$$
+Y_{i} = (Y_{i,1},\dots, Y_{i,d})
+$$
+
+* Our goal is to __explain__ the _variations_ in $Y_{n}$ with fewer dimensional variables, say 
+$$
+X_n = (X_{n,1},\dots,X_{n,m}),
+$$ 
+where $m < d$ (hopely, $m$ is much smaller than $d$)
+
+* Using PCA, one can find find such $X_i$ for some suitable $m$.
+
+
+Motivating PCA
+================
+
+* To motivate the idea behind PCA, consider the following model:
+
+$$\begin{aligned}
+    {\mathbf Y} = \begin{pmatrix} Y_{1,1} &amp; \dots &amp; Y_{1,d}\\ Y_{2,1} &amp; \dots &amp; Y_{2,d}\\ \vdots  &amp; &amp;\\ Y_{N,1} &amp; \dots &amp; Y_{N,d} \end{pmatrix} = \begin{pmatrix} X_1\\ X_2\\ \vdots\\ X_N \end{pmatrix} (O_1,\dots,O_d) =: {\mathbf X}\,{\mathbf O}^\top
+\end{aligned}$$
+
+* Here, $\{X_1,\dots,X_N\}$ is a weak WN$(0,{\sigma}^2)$ and $O_i$ are constants such that $\|{\mathbf O}\|^2:=\sum_{i=1}^d\,O_i^2 = 1$
+
+* Note that the n-th observation is given by $Y_n = (Y_{n,1},\dots,Y_{n,d}) = X_n\,{\mathbf O}^\top = (X_n\,O_1,\dots,X_n\,O_d)$
+
+
+Motivating PCA
+================
+
+* Vectors $\{Y_n\}$ are d-dimensional random variables, but each of them is a scalar multiple of Vector ${\mathbf O}$
+* Thus, we expect to be able to explain variations in ${\mathbf Y}$ just by using an __one__ dimensional sample (which is $\{X_n\}_{n=1}^N$)
+
+* But, we observe ${\mathbf Y}$ but we __don't__ know ${\mathbf O}$ and $\{X_n\}_{n=1}^N$. 
+* __Question:__ Given ${\mathbf Y}$, how can we estimate ${\mathbf O}$, ${\sigma}^2$, and $\{X_n\}_{n=1}^N$?
+* __Key Observation:__ we have 
+
+$$
+{\mathbf \Sigma} := Cov(Y_i) = {\mathbb E}(X_i^2{\mathbf O}{\mathbf O}^\top) = {\mathbf O}\,[{\sigma}^2]\,{\mathbf O}^\top
+$$
+
+
+Matrix Theory Part of PCA
+================
+
+* Recall the matrix factorization of ${\mathbf \Sigma}$:
+
+$$
+\begin{aligned}
+{\mathbf \Sigma}
+= [e(1), e(2),\dots, e(p)]\, \text{diag}({\lambda}_1,\dots,{\lambda}_n)\,[e(1), e(2),\dots, e(p)]^\top
+\end{aligned}
+$$
+
+* Comparing with the eigendecompostion of ${\mathbf \Sigma}$, we conclude that ${\sigma}^2$ must the the non-zero eigenvalue of ${\mathbf \Sigma}$ and ${\mathbf O}$ must be the corresponding eigenvector!
+
+* We can first estimate ${\mathbf \Sigma}$ by the sample covariance matrix $\widehat{\mathbf \Sigma}$, and consider the matrix factorization
+
+$$
+\widehat{\mathbf \Sigma} = e(1) {\lambda}_1 \,e(1)^\top
+$$
+
+
+
+Matrix Theory Part of PCA
+================
+
+* Then, we can try: 
+$$
+\begin{aligned}
+&{\hat \sigma}^2 = {\lambda}_1 \\
+&\widehat{\mathbf O}=e(1)
+\end{aligned}
+$$
+
+* It only remains to estimate ${\mathbf X}= (X_1,\dots,X_n)^\top$. Note that
+
+$$
+\begin{aligned}
+{\mathbf Y}\,{\mathbf O} = {\mathbf X}\,{\mathbf O}^\top\,{\mathbf O} = {\mathbf X}\,\|{\mathbf O}\|^2 = {\mathbf X}
+\end{aligned}
+$$
+
+* Therefore, 
+
+$$
+\widehat{\mathbf X} = {\mathbf Y}\,\widehat{\mathbf O} = {\mathbf Y}\,e(1)
+$$
+
+
+Non-unique Matrix Factorization Problem
+================
+
+* Note that
+$$\begin{aligned}
+    {\mathbf Y} = {\mathbf X}\,{\mathbf O}^\top = (-{\mathbf X})\,(-{\mathbf O})^\top 
+\end{aligned}$$
+
+* Thus, we cannot be completely sure about the estimated ${\mathbf X}h$ and ${\mathbf O}h$, since both pairs $({\mathbf X}, {\mathbf O})$ and $(-{\mathbf X}, -{\mathbf O})$ would generate the same observations ${\mathbf Y}$
+* In other words, given only ${\mathbf Y}$, we cannot say for sure if $({\mathbf X}, {\mathbf O})$ generated the data or $(-{\mathbf X}, -{\mathbf O})$
+* This situation is called the "parameter identification problem" in statistics
+
+
+Numerical Example
+================
+<font size=5>
+```{r}
+n=100;set.seed(99)
+sig = sqrt(3)
+X = matrix(rnorm(n, sd=sig), ncol = 1)
+O = matrix(c(-1/sqrt(5), -2/sqrt(5)), ncol=1)
+Y = X %*% t(O)
+```
+
+```{r}
+print(t(O))
+```
+</font>
+
+*** 
+
+<font size=5>
+```{r}
+print(head(X))
+print(head(Y))
+```
+</font>
+
+
+Numerical Example
+================
+
+```{r echo=T, fig.align='center', dpi=300,out.width='1200px', fig.heigth=1,fig.asp=0.5}
+plot(Y, main = "Observed data, Y", asp = 1)
+abline(a=0,b=O[2]/O[1],col="red")
+abline(a=0,b=-O[1]/O[2],col="blue")
+```
+
+
+Numerical Example
+================
+
+* Let us estimate $O$ and $X$ from the sample $Y$
+* First, we find the factorization of the covariance matrix of $Y$
+
+```{r}
+CovMat= var(Y)
+EigenDecomp = eigen(CovMat,TRUE)
+print(EigenDecomp$values)
+print(EigenDecomp$vectors)
+```
+
+
+
+Numerical Example
+================
+
+* Next, we find estimates for $\sigma$, $O$, and $X$
+
+```{r}
+sighat2 = EigenDecomp$values[1]
+Ohat= matrix(EigenDecomp$vectors[,1],ncol=1)
+Xhat = Y%*%Ohat
+
+```
+
+```{r}
+print(sig^2)
+print(sighat2)
+
+```
+
+Numerical Example
+================
+<font size=5>
+```{r}
+print(O)
+print(Ohat) # note the identifiability issue
+```
+</font>
+
+***
+<font size=5>
+
+```{r}
+print(head(X))
+print(head(Xhat)) # note the identifiability issue
+```
+</font>
+
+Motivating PCA -- 2D Case
+================
+
+* Next, let us assume the following scenario
+
+$$\begin{aligned}
+    {\mathbf Y} =\begin{pmatrix} Y_{1,1} &amp; \dots &amp; Y_{1,d}\\ Y_{2,1} &amp; \dots &amp; Y_{2,d}\\ \vdots  &amp; &amp;\\ Y_{n,1} &amp; \dots &amp; Y_{n,d} \end{pmatrix}=\begin{pmatrix} X_{1,1} &amp; X_{1,2}\\ X_{2,1} &amp; X_{2,2}\\ \vdots&amp;\\ X_{n,1} &amp; X_{n,2} \end{pmatrix} \begin{pmatrix} O_{1,1} &amp; O_{2,1}\\ \vdots&amp;\vdots\\ O_{1,d} &amp; O_{2,d} \end{pmatrix}^\top =: {\mathbf X}\,{\mathbf O}^\top
+\end{aligned}$$
+
+* Here, $\{X_n:=(X_{n,1},X_{n,2})\}_{n=1}^N$ are weak WN$\left(\begin{pmatrix}0\\0\end{pmatrix},\begin{pmatrix}\sigma_1^2 &amp; 0\\0 &amp;\sigma_2^2\end{pmatrix}\right)$ and ${\mathbf O}$ is a constant matrix such that ${\mathbf O}^\top{\mathbf O}=I=\begin{pmatrix}1 &amp; 0\\    0 &amp;1    \end{pmatrix}$
+
+
+Motivating PCA -- 2D Case
+================
+
+* In this scenario, the observations $Y_n = X_n\,{\mathbf O}^\top$ all lie in a plane in the space ${\mathbb R}^d$
+
+* Question: Given ${\mathbf Y}$, what is the best estimate of ${\mathbf O}$, $\sigma_1^2$, $\sigma_2^2$, and ${\mathbf X}$?
+* To answer this, note that
+$$
+\begin{aligned}
+{\mathbf \Sigma} & = Cov(Y_i) \\
+&= Cov(X_i\,{\mathbf O}^\top) = {\mathbb E}\left({\mathbf O}\,X_i^\top\,X_i\,{\mathbf O}^\top\right) = {\mathbf O}\begin{pmatrix} \sigma_1^2 &amp; 0\\
+ 0 & \sigma_2^2    \end{pmatrix}    {\mathbf O}^\top
+\end{aligned}
+$$
+* And that
+$$
+\begin{aligned}
+{\mathbf Y}\,{\mathbf O} = {\mathbf X}\,{\mathbf O}^\top\,{\mathbf O} = {\mathbf X}\, I = {\mathbf X}
+\end{aligned}
+$$
+
+
+Motivating PCA -- 2D Case
+================
+
+* Therefore, we consider the eigendecompostion of the sample covariance matrix $\hat{\mathbf \Sigma}$
+
+$$
+\begin{aligned}
+\hat{\mathbf \Sigma} = [e(1),e(2)] \begin{pmatrix}        {\lambda}_1 &amp; 0\\        0 &amp;{\lambda}_2    \end{pmatrix}    [e(1),e(2)]^\top
+\end{aligned}
+$$
+
+* Then, ${\hat \sigma}_1^2 = {\lambda}_1$ ${\hat \sigma}_2^2 = {\lambda}_2$ and  
+
+$$
+\begin{aligned}
+&\hat{\mathbf O} = [e(1),e(2)] \\
+&\hat{\mathbf X} = {\mathbf Y} [e(1),e(2)]
+\end{aligned}
+$$
+
+
+
+Motivating PCA -- 2D Case
+================
+
+* The parameter identification problem is still present in this case
+* Indeed, for any matrix $A$ such that $A\,A^\top=I$ (such matrices are called orthonormal), we have
+
+$$
+{\mathbf Y} = {\mathbf X}\,{\mathbf O}^\top =  {\mathbf X}\,A\,A^\top{\mathbf O}^\top = ({\mathbf X}\,A)\,({\mathbf O}\,A)^\top
+$$
+
+* Therefore, by only knowing ${\mathbf Y}$, we cannot say if $({\mathbf X},{\mathbf O})$ has generated ${\mathbf Y}$ or $({\mathbf X}\,A,{\mathbf O}\,A)$ (for any orthonormal matrix $A$)
+
+
+Numerial Example : the multi-factor case
+================
+<font size=5>
+```{r}
+n=300;d = 5;m=2
+sigx2 = diag(m:1)
+X = mvrnorm(n, rep(0, m), sigx2)
+O = randortho(d,type = "orthonormal")[,1:m]
+Y = X %*% t(O)
+```
+
+```{r}
+print(head(round(Y,3)))
+```
+</font>
+
+***
+<font size=5>
+```{r}
+print(head(X))
+print(t(round(O,3)))
+```
+</font> 
+
+Numerial Example: the multi-factor case
+================
+
+* First we find the matrix factorization of the covariance matrix
+<font size=5>
+```{r}
+CovMat= var(Y)
+EigenDecomp = eigen(CovMat,TRUE)
+options(digits=3)
+print(EigenDecomp$values)
+print(EigenDecomp$vectors)
+```
+</font>
+
+* Then, we estimate $\sigma_1$, $\sigma_2$, ${\mathbf O}$, and ${\mathbf X}$
+<font size=5>
+```{r}
+sigxhat2 = diag(EigenDecomp$values[1:m])
+Ohat = EigenDecomp$vectors[,1:m]
+Xhat = Y%*%Ohat
+```
+</font>
+
+Numerial Example: the multi-factor case
+================
+<font size=5>
+
+```{r}
+print(sigx2)
+print(head(X))
+print(O)
+```
+</font>
+
+*** 
+
+<font size=5>
+```{r}
+print(sigxhat2)
+print(head(Xhat)) 
+print(Ohat) 
+```
+</font>
+
+PCA as normed linear combinations
+================
+
+* The idea of PCA is similar to the scenarios that we studied above
+* Consider $N$ observation of a d-dimensional random variable 
+$$
+\{Y_n := (Y_{n,1},\dots,Y_{n,d})\}_{n=1}^N
+$$
+* Our goal is to reduce the dimension $d$. We would like to find a fewer dimensional random sample, say 
+$$
+\{X_n := (X_{n,1},\dots,X_{n,m})\}_{n=1}^N,
+$$
+where $m < d$, such that most of the variations in $\{Y_n\}$ is explained by $\{X_n\}$
+* We focus on "normed linear combinations": 
+$$
+Y_n\,{\mathbf \alpha} = \sum_{j=1}^d\,Y_{n,j}\,{\alpha}_j,
+$$
+where ${\mathbf \alpha}=({\alpha}_1,\dots,{\alpha}_d)^\top$ is a constant unit vector,$\|{\mathbf \alpha}\|^2 = 1$
+
+
+
+The first principal axis of PCA
+================
+* The "first principal __axis__", denoted by ${\mathbf O}_1$, indicates the direction in ${\mathbb R}^d$ where $\{Y_n\}$ has the most variation
+${\mathbf O}_1$ is the maximizer of the following problem
+
+$$
+\begin{aligned}
+{Var}(Y_n\,{\mathbf O}_1) = \max_{{\mathbf \alpha}}\{{Var}(Y_n\,{\mathbf \alpha})\,:\,\|{\mathbf \alpha}\|^2=1\}
+\end{aligned}
+$$
+
+
+* The "first principal __component__", denoted by 
+$$
+X_1 = (X_{1,1}, \dots, X_{N,1})^\top,
+$$
+are the projection of observation $\{Y_n\}$ in the direction of ${\mathbf O}_1$. In particular, 
+$$
+X_1 = {\mathbf Y}\,{\mathbf O}_1
+$$
+
+
+
+The second principal axis of PCA
+================
+
+* The second principal axis, denoted by ${\mathbf O}_2$, indicates the direction in ${\mathbb R}^d$ orthogonal to ${\mathbf O}_1$, where $\{Y_n\}$ has the most variation
+* ${\mathbf O}_2$ is the maximizer of the following problem
+
+$$
+\begin{aligned}
+{Var}(Y_n\,{\mathbf O}_2) = \max_{{\mathbf \alpha}}\{{Var}(Y_n\,{\mathbf \alpha}\,:\,\|{\mathbf \alpha}\|^2=1, {\mathbf \alpha}^\top\,{\mathbf O}_1=0\}   
+\end{aligned}
+$$
+
+* The second principal components, denoted by $X_2 = (X_{1,2}, \dots, X_{N,2})^\top$, are the projection of observation $\{Y_n\}$ in the direction of ${\mathbf O}_2$. In particular, $X_2 = {\mathbf Y}\,{\mathbf O}_2$
+
+
+k-th principal axis of PCA
+================
+
+* Similarly, the "k-th principal axis," denoted by ${\mathbf O}_k$, indicates the direction in ${\mathbb R}^d$ that is orthogonal to all the previous principal axes (i.e. ${\mathbf O}_1, \dots {\mathbf O}_{k-1}$) and where $\{Y_n\}$ has the most variation
+* ${\mathbf O}_k$ is the maximizer of the following problem
+
+$$
+\begin{aligned}
+{Var}(Y_n\,{\mathbf O}_k) = \max_{{\mathbf \alpha}}\{{Var}(Y_n\,{\mathbf \alpha}\,:\,\|{\mathbf \alpha}\|^2=1, {\mathbf \alpha}^\top{\mathbf O}_1=\dots = {\mathbf \alpha}^\top {\mathbf O}_k=0\} 
+\end{aligned}
+$$
+
+* The "k-th principal component," denoted by $X_k = (X_{1,k}, \dots, X_{N,k})^\top$, are the projection of observation $\{Y_n\}$ in the direction of ${\mathbf O}_k$. In particular, $X_k = {\mathbf Y}\,{\mathbf O}_k$
+
+Matrix Factorization Method
+================
+
+* As it turns out, the eigendecompostion of the covariance matrix ${\mathbf \Sigma} = Cov(Y_i)$ yields the principal axes and components.  Consider
+the eigendecompostion of ${\mathbf \Sigma}$
+$$
+{\mathbf \Sigma} = {\mathbf E}\,{\mathbf \Gamma}\,{\mathbf E}^\top = [e(1),\dots, e(d)] \text{diag}({\lambda}_1,\dots,{\lambda}_d) [e(1),\dots, e(d)]^\top
+$$ 
+* Then, ${\mathbf O}_k = e(k)$, ${Var}(Y_i\,{\mathbf O}_i) = {\lambda}_k$, and for $l\ne k$, 
+$$
+Cov(X_{i,k}, X_{i,l}) = Cov(Y_i\,{\mathbf O}_k,\,Y_i\,{\mathbf O}_l) = 0
+$$ 
+* Using these results, we may interpret the eigenvalues of ${\mathbf \Sigma}$ as follows
+  + ${\lambda}_k$ measures the variation of $\{Y_n\}$ that is explained by the k-th principal component $X_k$
+  + ${\lambda}_1 + \dots + {\lambda}_d$ measures the total variation of $\{Y_n\}$ that is explained by all the principal components
+
+Measuring Variance Explained
+================
+
+* $\displaystyle \frac{{\lambda}_k}{{\lambda}_1 + \dots + {\lambda}_d}$ is the proportion of the explainable variation of $\{Y_n\}$ that is explained by $X_k$
+* $\displaystyle \frac{{\lambda}_1 + \dots + {\lambda}_k}{{\lambda}_1 + \dots + {\lambda}_d}$ is the proportion of the explainable variation of $\{Y_n\}$ that is explained by the first k principal component $X_1, \dots, X_k$
+* In many cases in practice, most of the variations (say 95\%) is explained by only a few principal components. In these scenarios, we can use the first few principal components to analyze the variations in $\{Y_n\}$
+* Refer to Section 18.2 of the textbook for more details
+```{r echo=F}
+options(width=200)
+```
+
+
+
+Example 18.2
+==============
+
+* This example uses yields on Treasury bonds at 11 maturities, T = 1, 3, and 6 months and 1, 2, 3, 5, 7, 10, 20, and 30 years. 
+* Daily yields were taken from a U.S. Treasury website for the time period January 2, 1990, to October 31, 2008,
+
+<font size=5>
+```{r}
+datNoOmit = read.table("treasury_yields.txt",header=T)
+diffdatNoOmit = diff(as.matrix(datNoOmit[,2:12]))
+dat=na.omit(datNoOmit)
+diffdat = na.omit(diffdatNoOmit)
+head(dat)
+```
+</font>
+
+Example 18.2
+============
+
+* The covariance matrix, not the correlation matrix, was used, because in this example the variables are comparable and in the same units.
+* First, we will look at the 11 eigenvalues using R’s function `prcomp()`
+<font size=4>
+```{r}
+n = dim(diffdat)[1]
+options(digits=1)
+pca = prcomp(diffdat)
+summary(pca)
+```
+</font>
+* The first row gives the values of $\sqrt{\lambda_i}$, the second row the values of ${\lambda}_i/({\lambda}_1 + ··· + {\lambda}_d)$, and the third row the values of $({\lambda}_1 + \cdots + {\lambda}_i)/({\lambda}_1 + \cdots + {\lambda}_d)$ for $i = 1,\cdots,11$.
+
+
+
+
+Example 18.2
+============
+
+
+```{r echo=F, fig.align='center', dpi=300,out.width='500px', fig.heigth=1,fig.asp=1}
+par(mfrow=c(2,2))
+time = c(1/12,.25,.5,1, 2, 3, 5, 7, 10, 20, 30)
+plot(time,as.vector(dat[1,2:12]),ylim=c(0,6),type="b",lty=1,lwd=2,
+     ylab="Yield",xlab="T",main="(a)") #,log="x",xaxs="r")
+lines(time,as.vector(dat[486,2:12]),type="b",lty=2,lwd=2,col="red")
+lines(time,as.vector(dat[n+2,2:12]),type="b",lty=3,lwd=2,col="blue")
+legend("bottomright",c("07/31/01","07/02/07","10/31/08"),lty=c(1,2,3),lwd=2,
+       cex=1, col=c("black","red","blue"))
+plot(pca,main="(b)")
+plot(time,pca$rotation[,1],,ylim=c(-.8,.8),type="b",lwd=2,ylab="PC",xlab="T",
+     main="(c)")
+lines(time,pca$rotation[,2],lty=2,type="b",lwd=2,col="red")
+lines(time,pca$rotation[,3],lty=3,type="b",lwd=2,col="blue")
+lines(0:30,0*(0:30),lwd=1)
+legend("bottomright",c("PC 1","PC 2","PC 3"),lty=c(1,2,3),lwd=2,col=c("black","red","blue"))
+plot(time,pca$rotation[,1],ylim=c(-.8,.8),type="b",lwd=2,ylab="PC",xlab="T",
+     xlim=c(0,3),main="(d)")
+lines(time,pca$rotation[,2],lty=2,type="b",lwd=2,col="red")
+lines(time,pca$rotation[,3],lty=3,type="b",lwd=2,col="blue")
+lines(0:30,0*(0:30),lwd=1)
+legend("bottomright",c("PC 1","PC 2","PC 3"),lty=c(1,2,3),lwd=2,col=c("black","red","blue"))
+```
+
+*** 
+
+a) Treasury yields on three dates. b) Scree plot for the changes in Treasury yields. Note that the first three principal components have most of the variation, and the first five have virtually all of it. c) The first three eigenvectors for changes in the Treasury yields. d) The first three eigenvectors for changes in the Treasury yields in the range $0\le T \le 3$. 
+</font>
+
+Example 18.2
+=============
+
+```{r echo=F, fig.align='center', dpi=300,out.width='500px', fig.heigth=1,fig.asp=1}
+plot(time,pca$rotation[,1],ylim=c(-.8,.8),type="b",lwd=2,ylab="PC",xlab="T",
+     xlim=c(0,3),main="(d)")
+lines(time,pca$rotation[,2],lty=2,type="b",lwd=2,col="red")
+lines(time,pca$rotation[,3],lty=3,type="b",lwd=2,col="blue")
+lines(0:30,0*(0:30),lwd=1)
+legend("bottomright",c("PC 1","PC 2","PC 3"),lty=c(1,2,3),lwd=2,col=c("black","red","blue"))
+```
+
+
+
+Example 18.2
+=============
+
+
+```{r echo=F, fig.align='center', dpi=300,out.width='500px', fig.heigth=1,fig.asp=0.7}
+plot(time,pca$rotation[,1],ylim=c(-.8,.8),type="b",lwd=2,ylab="PC",xlab="T",
+     xlim=c(0,3),main="(d)")
+lines(time,pca$rotation[,2],lty=2,type="b",lwd=2,col="red")
+lines(time,pca$rotation[,3],lty=3,type="b",lwd=2,col="blue")
+lines(0:30,0*(0:30),lwd=1)
+legend("bottomright",c("PC 1","PC 2","PC 3"),lty=c(1,2,3),lwd=2,col=c("black","red","blue"))
+```
+
+
+
+The first, $\mathbf O_1$, has all positive values.2 A change in this direction either increases all yields or decreases all yields, and by roughly the same amounts. One could call such changes “parallel shifts” of the yield curve, though they are only approximately parallel. 
+
+
+
+Example 18.2
+=============
+
+
+```{r echo=F, fig.align='center', dpi=300,out.width='500px', fig.heigth=1,fig.asp=0.7}
+plot(time,pca$rotation[,1],ylim=c(-.8,.8),type="b",lwd=2,ylab="PC",xlab="T",
+     xlim=c(0,3),main="(d)")
+lines(time,pca$rotation[,2],lty=2,type="b",lwd=2,col="red")
+lines(time,pca$rotation[,3],lty=3,type="b",lwd=2,col="blue")
+lines(0:30,0*(0:30),lwd=1)
+legend("bottomright",c("PC 1","PC 2","PC 3"),lty=c(1,2,3),lwd=2,col=c("black","red","blue"))
+```
+
+
+
+The graph of $\mathbf O_2$ is everywhere decreasing3 and changes in this direction either increase or decrease the slope of the yield curve. The result is that a graph of the mean plus or minus PC2 will cross the graph of the mean curve at approximately T = 1, where o2 equals zero;
+
+
+
+Example 18.2
+=============
+
+
+```{r echo=F, fig.align='center', dpi=300,out.width='500px', fig.heigth=1,fig.asp=0.7}
+plot(time,pca$rotation[,1],ylim=c(-.8,.8),type="b",lwd=2,ylab="PC",xlab="T",
+     xlim=c(0,3),main="(d)")
+lines(time,pca$rotation[,2],lty=2,type="b",lwd=2,col="red")
+lines(time,pca$rotation[,3],lty=3,type="b",lwd=2,col="blue")
+lines(0:30,0*(0:30),lwd=1)
+legend("bottomright",c("PC 1","PC 2","PC 3"),lty=c(1,2,3),lwd=2,col=c("black","red","blue"))
+```
+
+
+
+The graph of $\mathbf O_3$ is first decreasing and then increasing, and the changes in this direction either increase or decrease the convexity of the yield curve. The result is that a graph of the mean plus or minus PC3 will cross the graph of the mean curve twice;
+
+Example 18.2
+=============
+```{r echo=F, fig.align='center', dpi=300,out.width='600px', fig.heigth=1,fig.asp=0.5}
+par(mfrow=c(1,3))
+for (i in 1:3){
+  plot(pca$x[,i],main=paste("PC",toString(i)),xlab="day",
+       ylab="")
+}
+```
+
+* A bond portfolio manager would be interested in the behavior of the yield changes over time. Time series analysis based on the changes in the 11 yields could be useful, but a better approach would be to use the first three principal components. 
+
+* The time series plots show substantial volatility clustering which could be modeled using the GARCH models
+
+Example 18.2
+=============
+
+```{r echo=F, fig.align='center', dpi=300,out.width='600px', fig.heigth=1,fig.asp=1}
+acf(pca$x[,1:3],ylab="",xlab="lag")
+```
+
+
+Example 18.2
+=============
+
+```{r echo=F, fig.align='center', dpi=300,out.width='550px', fig.heigth=1,fig.asp=1}
+require(forecast)
+Acf(pca$x[,1:3],ylab="",xlab="lag")
+```
+
+*** 
+
+
+* moderate short-term auto-correlations which could be modeled with an ARMA process, though the correlation is small enough that it might be ignored.
+
+* The practical implication is that parallel shifts, changes in slopes, and changes in convexity are nearly uncorrelated and could be analyzed separately. 
+
+
+Example 18.3 
+================
+
+* This example uses the data set `equityFunds.csv`.  The variables are daily returns from January 1, 2002 to May 31, 2007 on eight equity funds: EASTEU, LATAM, CHINA, INDIA, ENERGY, MINING, GOLD, and WATER.
+<font size=5>
+```{r}
+equityFunds = read.csv("equityFunds.csv")
+head(equityFunds)
+```
+```{r}
+pcaEq = prcomp(equityFunds[,2:9])
+summary(pcaEq)
+```
+</font>
+
+
+Example 18.3
+================
+
+The results in this example are below and are different than those for the changes in yields, because in this example the variation is __less concentrated__ in the first few principal components. 
+
+```{r echo=F, fig.align='center', dpi=300,out.width='450px', fig.heigth=1,fig.asp=1}
+plot(pcaEq,main="Scree plot")
+```
+
+
+
+Example 18.3
+================
+
+```{r echo=F, fig.align='center', dpi=300,out.width='400px', fig.heigth=1,fig.asp=1}
+plot(pcaEq$rotation[,1],type="b",ylab="PC",lwd=2,ylim=c(-1.4,2),
+     main="Principal Axes", xaxt="n")
+lines(pcaEq$rotation[,2],type="b",lty=2,lwd=2,col="red")
+lines(pcaEq$rotation[,3],type="b",lty=3,lwd=2,col="blue")
+abline(h=0, col=1)
+legend("top",c("PC1","PC2","PC3"),lty=c(1,2,3),lwd=2,cex=.65,col=c("black", "red", "blue"))
+text(1:8,1.1*par("usr")[3],names(equityFunds)[2:9],srt = 45,cex=.8,pos = 1, xpd = TRUE)
+```
+
+*** 
+
+The first eigenvector has only positive values, and returns in this direction are either positive for all of the funds or negative for all of them. 
+
+
+Example 18.3
+================
+
+```{r echo=F, fig.align='center', dpi=300,out.width='400px', fig.heigth=1,fig.asp=1}
+plot(pcaEq$rotation[,1],type="b",ylab="PC",lwd=2,ylim=c(-1.4,2),
+     main="Principal Axes", xaxt="n")
+lines(pcaEq$rotation[,2],type="b",lty=2,lwd=2,col="red")
+lines(pcaEq$rotation[,3],type="b",lty=3,lwd=2,col="blue")
+abline(h=0, col=1)
+legend("top",c("PC1","PC2","PC3"),lty=c(1,2,3),lwd=2,cex=.65,col=c("black", "red", "blue"))
+text(1:8,1.1*par("usr")[3],names(equityFunds)[2:9],srt = 45,cex=.8,pos = 1, xpd = TRUE)
+```
+
+The second eigenvector is negative for mining and gold (funds 6 and 7) and positive for the other funds. 
+
+*** 
+
+Variation along this eigenvector has mining and gold moving in the opposite direction of the other funds. __Gold and mining stock moving counter to the rest of the stock market is a common occurrence__ and, in fact, these types of stock often have negative betas, so it is not surprising that the second principal component has 17 % of the variation.
+
+
+Example 18.3
+================
+
+```{r echo=F, fig.align='center', dpi=300,out.width='400px', fig.heigth=1,fig.asp=1}
+plot(pcaEq$rotation[,1],type="b",ylab="PC",lwd=2,ylim=c(-1.4,2),
+     main="Principal Axes", xaxt="n")
+lines(pcaEq$rotation[,2],type="b",lty=2,lwd=2,col="red")
+lines(pcaEq$rotation[,3],type="b",lty=3,lwd=2,col="blue")
+abline(h=0, col=1)
+legend("top",c("PC1","PC2","PC3"),lty=c(1,2,3),lwd=2,cex=.65,col=c("black", "red", "blue"))
+text(1:8,1.1*par("usr")[3],names(equityFunds)[2:9],srt = 45,cex=.8,pos = 1, xpd = TRUE)
+```
+
+*** 
+
+The third principal component is less easy to interpret, but its loading on India (fund 4) is higher than on the other funds, which might indicate that there is something different about __Indian equities__.
+
+
+Example 18.4
+============
+
+* As a further example, we will use returns on the 30 stocks on the Dow Jones average. The data are in the data set DowJone30.csv and cover the period from January 2, 1991 to January 2, 2002.  
+
+* The first five principal components have over 97 % of the variation:
+<font size=5>
+```{r echo=T, fig.align='center', dpi=300,out.width='400px', fig.heigth=1,fig.asp=1}
+DowJones30 = read.csv("DowJones30.csv")
+pcaDJ = prcomp(DowJones30[,2:31])
+```
+</font>
+
+<pre>
+Importance of components:
+                          PC1     PC2     PC3     PC4     PC5     PC6
+Standard deviation     88.531 24.9668 13.4351 10.6024 8.21654 7.68608
+Proportion of Variance  0.866  0.0688  0.0199  0.0124 0.00746 0.00652
+Cumulative Proportion   0.866  0.9345  0.9544  0.9668 0.97427 0.98080
+</pre>
+
+Example 18.4
+============
+
+* In contrast to the analysis of the equity funds where six principal components were needed to obtain 95 percent of the variance, here the first three principal components have over 95 percent of the variance. 
+
+* __Why are the Dow Jones stocks behaving differently compared to the equity funds?__ The Dow Jones stocks are similar to each other since they are all large companies in the United States. Thus, we can expect that their returns will be highly correlated with each other and a few principal components will explain most of the variation.
+
+
+
+
+<script>
+for(i=0;i<$("section").length+1;i++) {
+if(i==0) continue
+$("section").eq(i).append("<p style='font-size:medium;position:fixed;right:10px;bottom:10px;'>" + i + "")
+}
+
+</script>
+
